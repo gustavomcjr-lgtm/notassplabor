@@ -324,12 +324,11 @@
     // COLE ABAIXO A SUA CONFIGURAÇÃO DO FIREBASE
     const firebaseConfig = {
         apiKey: "AIzaSyB_stAqlEz81bKnAWk1LPqoU9v6W6TVuo8",
-  authDomain: "notas-3a3b1.firebaseapp.com",
-  projectId: "notas-3a3b1",
-  storageBucket: "notas-3a3b1.firebasestorage.app",
-  messagingSenderId: "212629270963",
-  appId: "1:212629270963:web:0396cf8cb2434d5f935bc6"
-
+        authDomain: "seu-projeto.firebaseapp.com",
+        projectId: "seu-projeto",
+        storageBucket: "seu-projeto.appspot.com",
+        messagingSenderId: "SEU_SENDER_ID",
+        appId: "SEU_APP_ID"
     };
 
     firebase.initializeApp(firebaseConfig);
@@ -340,7 +339,8 @@
     document.addEventListener("DOMContentLoaded", function() {
         const statusEl = document.getElementById('statusNuvem');
         
-        db.collection("notas").onSnapshot((snapshot) => {
+        // Ordena os registros do mais recente para o mais antigo automaticamente no topo
+        db.collection("notas").orderBy("criadoEm", "desc").onSnapshot((snapshot) => {
             dadosNotas = [];
             snapshot.forEach((doc) => {
                 dadosNotas.push({ idDoc: doc.id, ...doc.data() });
@@ -384,7 +384,8 @@
             descricao: "",
             quantidade: "1",
             data: `${String(hoje.getDate()).padStart(2, '0')}/${String(hoje.getMonth() + 1).padStart(2, '0')}/${hoje.getFullYear()}`,
-            responsavel: ""
+            responsavel: "",
+            criadoEm: firebase.firestore.FieldValue.serverTimestamp() // Usado para ordenar sempre no topo
         };
         db.collection("notas").add(novaNota);
     }
@@ -430,7 +431,7 @@
             tr.innerHTML = `
                 <td><div contenteditable="true" onblur="atualizarCampo('${item.idDoc}', 'numero', this.innerText)">${item.numero || ''}</div></td>
                 <td><div contenteditable="true" onblur="atualizarCampo('${item.idDoc}', 'fornecedor', this.innerText)">${item.fornecedor || ''}</div></td>
-                <td><div contenteditable="true" onblur="atualizarCampo('${item.idDoc}', 'descricao', this.innerText)">${item.descricao || ''}</div></td>
+                <td><div contenteditable="true" onblur="atualizarCampopar('${item.idDoc}', 'descricao', this.innerText)" onblur="atualizarCampo('${item.idDoc}', 'descricao', this.innerText)">${item.descricao || ''}</div></td>
                 <td><div contenteditable="true" onblur="atualizarCampo('${item.idDoc}', 'quantidade', this.innerText)">${item.quantidade || ''}</div></td>
                 <td><div contenteditable="true" onblur="atualizarCampo('${item.idDoc}', 'data', this.innerText)">${item.data || ''}</div></td>
                 <td><div contenteditable="true" onblur="atualizarCampo('${item.idDoc}', 'responsavel', this.innerText)">${item.responsavel || ''}</div></td>
