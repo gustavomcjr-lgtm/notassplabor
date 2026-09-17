@@ -173,6 +173,9 @@
         .btn-warning { background-color: #f59e0b; color: white; }
         .btn-warning:hover { background-color: #d97706; }
 
+        .btn-purple { background-color: #8b5cf6; color: white; }
+        .btn-purple:hover { background-color: #7c3aed; }
+
         select, input[type="date"], input[type="text"], input[type="month"] {
             padding: 8px 12px;
             border: 1px solid #cbd5e1;
@@ -262,6 +265,7 @@
         <button class="tab-btn active" onclick="mudarAba('notas')">📝 Notas e Registros</button>
         <button class="tab-btn" onclick="mudarAba('dashboard')">📊 Dashboard</button>
         <button class="tab-btn" onclick="mudarAba('relatorio')">🖨️ Relatório Mensal</button>
+        <button class="tab-btn" onclick="mudarAba('backup')">💾 Backup / Restaurar</button>
     </div>
 
     <div id="aba-notas" class="tab-content active">
@@ -318,18 +322,32 @@
             </div>
         </div>
     </div>
+
+    <div id="aba-backup" class="tab-content">
+        <h2>Gerenciamento de Backup</h2>
+        <div class="report-box" style="max-width: 600px;">
+            <p style="color: #64748b; margin-top: 0;">Faça o download de um arquivo com todas as suas notas atuais salvas na nuvem ou restaure um backup anterior.</p>
+            <div style="display: flex; gap: 15px; flex-wrap: wrap; margin-top: 20px;">
+                <button class="btn-success" onclick="fazerBackup()">📥 Baixar Backup (JSON)</button>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <input type="file" id="arquivoBackup" accept=".json" style="display: none;" onchange="restaurarBackup(event)">
+                    <button class="btn-purple" onclick="document.getElementById('arquivoBackup').click()">📤 Restaurar Backup</button>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
 <script>
     // COLE ABAIXO A SUA CONFIGURAÇÃO DO FIREBASE
     const firebaseConfig = {
         apiKey: "AIzaSyB_stAqlEz81bKnAWk1LPqoU9v6W6TVuo8",
-        authDomain: "seu-projeto.firebaseapp.com",
-        projectId: "seu-projeto",
-        storageBucket: "seu-projeto.appspot.com",
-        messagingSenderId: "SEU_SENDER_ID",
-        appId: "SEU_APP_ID"
-    };
+        authDomain:"notas-3a3b1.firebaseapp.com",
+        projectId: "notas-3a3b1",
+        storageBucket: "notas-3a3b1.firebasestorage.app",
+        messagingSenderId: "212629270963",
+        appId: "1:212629270963:web:0396cf8cb2434d5f935bc6"
+};
 
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
@@ -339,7 +357,6 @@
     document.addEventListener("DOMContentLoaded", function() {
         const statusEl = document.getElementById('statusNuvem');
         
-        // Ordena os registros do mais recente para o mais antigo automaticamente no topo
         db.collection("notas").orderBy("criadoEm", "desc").onSnapshot((snapshot) => {
             dadosNotas = [];
             snapshot.forEach((doc) => {
@@ -373,6 +390,9 @@
         } else if (abaId === 'relatorio') {
             document.querySelector('.tabs button:nth-child(3)').classList.add('active');
             document.getElementById('aba-relatorio').classList.add('active');
+        } else if (abaId === 'backup') {
+            document.querySelector('.tabs button:nth-child(4)').classList.add('active');
+            document.getElementById('aba-backup').classList.add('active');
         }
     }
 
@@ -385,7 +405,7 @@
             quantidade: "1",
             data: `${String(hoje.getDate()).padStart(2, '0')}/${String(hoje.getMonth() + 1).padStart(2, '0')}/${hoje.getFullYear()}`,
             responsavel: "",
-            criadoEm: firebase.firestore.FieldValue.serverTimestamp() // Usado para ordenar sempre no topo
+            criadoEm: firebase.firestore.FieldValue.serverTimestamp()
         };
         db.collection("notas").add(novaNota);
     }
@@ -431,7 +451,7 @@
             tr.innerHTML = `
                 <td><div contenteditable="true" onblur="atualizarCampo('${item.idDoc}', 'numero', this.innerText)">${item.numero || ''}</div></td>
                 <td><div contenteditable="true" onblur="atualizarCampo('${item.idDoc}', 'fornecedor', this.innerText)">${item.fornecedor || ''}</div></td>
-                <td><div contenteditable="true" onblur="atualizarCampopar('${item.idDoc}', 'descricao', this.innerText)" onblur="atualizarCampo('${item.idDoc}', 'descricao', this.innerText)">${item.descricao || ''}</div></td>
+                <td><div contenteditable="true" onblur="atualizarCampo('${item.idDoc}', 'descricao', this.innerText)">${item.descricao || ''}</div></td>
                 <td><div contenteditable="true" onblur="atualizarCampo('${item.idDoc}', 'quantidade', this.innerText)">${item.quantidade || ''}</div></td>
                 <td><div contenteditable="true" onblur="atualizarCampo('${item.idDoc}', 'data', this.innerText)">${item.data || ''}</div></td>
                 <td><div contenteditable="true" onblur="atualizarCampo('${item.idDoc}', 'responsavel', this.innerText)">${item.responsavel || ''}</div></td>
@@ -464,6 +484,59 @@
         renderizarTabela();
         mudarAba('notas');
         setTimeout(() => window.print(), 300);
+    }
+
+    // Função de Backup (Baixar JSON)
+    function fazerBackup() {
+        if (dadosNotas.length === 0) {
+            alert("Não há dados para exportar.");
+            return;
+        }
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(dadosNotas, null, 2));
+        const downloadAnchor = document.createElement('a');
+        downloadAnchor.setAttribute("href", dataStr);
+        downloadAnchor.setAttribute("download", `backup_notas_${new Date().toISOString().slice(0,10)}.json`);
+        document.body.appendChild(downloadAnchor);
+        downloadAnchor.click();
+        downloadAnchor.remove();
+    }
+
+    // Função de Restaurar Backup (Enviar JSON para o Firebase)
+    async function restaurarBackup(event) {
+        const arquivo = event.target.files[0];
+        if (!arquivo) return;
+
+        if (!confirm("Atenção: Restaurar um backup irá inserir os dados do arquivo no seu banco de dados atual. Deseja continuar?")) {
+            event.target.value = '';
+            return;
+        }
+
+        const leitor = new FileReader();
+        leitor.onload = async function(e) {
+            try {
+                const notasRestauradas = JSON.parse(e.target.result);
+                if (!Array.isArray(notasRestauradas)) {
+                    throw new Error("Formato inválido.");
+                }
+
+                let contador = 0;
+                for (const nota of notasRestauradas) {
+                    delete nota.idDoc; // Remove o ID antigo para gerar novos no Firestore
+                    if(!nota.criadoEm) nota.criadoEm = firebase.firestore.FieldValue.serverTimestamp();
+                    await db.collection("notas").add(nota);
+                    contador++;
+                }
+
+                alert(`Backup restaurado com sucesso! ${contador} registros adicionados à nuvem.`);
+                event.target.value = '';
+                mudarAba('notas');
+            } catch (erro) {
+                alert("Erro ao ler o arquivo de backup. Certifique-se de que é um arquivo JSON válido.");
+                console.error(erro);
+                event.target.value = '';
+            }
+        };
+        leitor.readAsText(arquivo);
     }
 </script>
 
